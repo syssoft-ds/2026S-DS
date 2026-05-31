@@ -19,7 +19,7 @@ TIMEOUT_SECONDS = 120
 PRE_RUN_PORT_WAIT_SECONDS = 30
 NODE_STARTUP_TIMEOUT_SECONDS = 30
 GRACEFUL_SHUTDOWN_SECONDS = 10
-CLASS_PATH = "build/manual-check"
+CLASS_PATH = "build/classes/java/main"
 DEFAULT_HEAP_PERCENT = 50.0
 TOTAL_AVAILABLE_HEAP = 16384
 MIN_HEAP_MB = 8
@@ -31,9 +31,10 @@ RESULT_PATTERN = re.compile(
 
 
 def main():
-    project_dir = Path(__file__).resolve().parents[1]
+    repository_dir = Path(__file__).resolve().parents[1]
+    project_dir = repository_dir / "sim4da-S26-pingpong"
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    run_dir = project_dir / "results" / f"tokenring-{timestamp}"
+    run_dir = repository_dir / "results" / f"tokenring-{timestamp}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"total available heap: {TOTAL_AVAILABLE_HEAP} MiB")
