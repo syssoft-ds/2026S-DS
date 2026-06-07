@@ -1,6 +1,7 @@
 import csv
 import os
 import re
+import secrets
 import statistics
 import subprocess
 import time
@@ -55,7 +56,7 @@ def main():
 
 def run_one_experiment(project_dir, run_dir, run_index, repetition, node_count):
     log_path = run_dir / f"run{run_index}-n{node_count}.log"
-    seed = 2026 + run_index
+    seed = secrets.randbits(63)
     command = [
         "java",
         f"-Xmx{JAVA_HEAP}",

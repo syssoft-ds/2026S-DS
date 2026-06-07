@@ -11,7 +11,6 @@ import java.util.Random;
 public class FireworkSimulation {
     private static final double DEFAULT_INITIAL_PROBABILITY = 0.5;
     private static final int DEFAULT_SILENT_ROUNDS = 3;
-    private static final long DEFAULT_SEED = 2026L;
 
     record Token(int round,
                  int hops,
@@ -38,7 +37,7 @@ public class FireworkSimulation {
                      int nodeCount,
                      double initialProbability,
                      int maxSilentRounds,
-                     long seed,
+                     long randomSeed,
                      boolean startsWithToken,
                      boolean verbose,
                      RoundStats roundStats) {
@@ -48,7 +47,7 @@ public class FireworkSimulation {
             this.nextNode = FireworkSimulation.nodeName((index + 1) % nodeCount);
             this.probability = initialProbability;
             this.maxSilentRounds = maxSilentRounds;
-            this.random = new Random(seed + index);
+            this.random = new Random(randomSeed);
             this.startsWithToken = startsWithToken;
             this.verbose = verbose;
             this.roundStats = roundStats;
@@ -74,6 +73,9 @@ public class FireworkSimulation {
                     }
                     case Firework firework -> handleFirework(firework);
                     case Stop stop -> {
+                        if (index != 0) {
+                            send(stop, nextNode);
+                        }
                         if (verbose) {
                             System.out.printf("%s stopped%n", nodeName());
                         }
@@ -104,7 +106,7 @@ public class FireworkSimulation {
             }
 
             if (silentRounds >= maxSilentRounds) {
-                broadcast(new Stop());
+                send(new Stop(), nextNode);
                 printResult(nodeCount, token.round(), token.multicasts(), roundStats);
                 return true;
             }
@@ -160,13 +162,14 @@ public class FireworkSimulation {
         }
 
         RoundStats roundStats = new RoundStats();
+        Random nodeSeedGenerator = new Random(config.seed());
         for (int i = 0; i < config.nodeCount(); i++) {
             new FireworkNode(
                     i,
                     config.nodeCount(),
                     config.initialProbability(),
                     config.maxSilentRounds(),
-                    config.seed(),
+                    nodeSeedGenerator.nextLong(),
                     i == 0,
                     config.verbose(),
                     roundStats);
@@ -201,7 +204,7 @@ public class FireworkSimulation {
                     ? Double.parseDouble(args[1])
                     : DEFAULT_INITIAL_PROBABILITY;
             int maxSilentRounds = args.length > 2 ? Integer.parseInt(args[2]) : DEFAULT_SILENT_ROUNDS;
-            long seed = args.length > 3 ? Long.parseLong(args[3]) : DEFAULT_SEED;
+            long seed = args.length > 3 ? Long.parseLong(args[3]) : 1L;
             boolean verbose = args.length > 4 && Boolean.parseBoolean(args[4]);
 
             if (nodeCount < 1) {
