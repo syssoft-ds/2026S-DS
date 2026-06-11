@@ -16,22 +16,22 @@ import java.util.*;
  * Nach k aufeinanderfolgenden Runden ohne Rakete terminiert die Simulation.
  *
  * Aufruf: ./gradlew runTokenRing --args="<n> [<p0> [<k>]]"
- *   n   – Ringgröße (Anzahl Knoten)
- *   p0  – Anfangszündwahrscheinlichkeit (Standard: 0.5)
- *   k   – aufeinanderfolgende leere Runden bis Terminierung (Standard: 3)
+ * n   – Ringgröße (Anzahl Knoten)
+ * p0  – Anfangszündwahrscheinlichkeit (Standard: 0.5)
+ * k   – aufeinanderfolgende leere Runden bis Terminierung (Standard: 3)
  *
  * Ausgabe (letzte Zeile stdout):
- *   STATS n=… rounds=… broadcasts=… min_rt_ms=… mean_rt_ms=… max_rt_ms=…
+ * STATS n=… rounds=… broadcasts=… min_rt_ms=… mean_rt_ms=… max_rt_ms=…
  */
 public class TokenRingSimulation {
 
     // ── Nachrichten ──────────────────────────────────────────────────────────
 
     /** Wandert im Ring: zählt Raketen der aktuellen Runde mit. */
-    record Token(int round, int fireworks) implements Message {}
+    record Token(int round, int fireworks, Set<String> originators) implements Message {}
 
     /** Broadcast: ein Knoten hat eine Rakete gezündet. */
-    record Firework(int round) implements Message {}
+    record Firework(int round, String from) implements Message {}
 
     /** Terminierungssignal: alle Knoten sollen beenden. */
     record Shutdown() implements Message {}
@@ -43,6 +43,8 @@ public class TokenRingSimulation {
         final String nextNode;
         final List<String> allNodes;
         double p;
+        // Speicher für empfangene Feuerwerke der AKTUELLEN Runde
+        final Set<String> receivedInCurrentRound = new HashSet<>();
 
         RingNode(int index, List<String> allNodes, double p0) {
             super("Node-" + index);
@@ -52,32 +54,53 @@ public class TokenRingSimulation {
             this.p = p0;
         }
 
-        /** Zündet mit Wahrscheinlichkeit p, halbiert p, leitet Token weiter. */
         Token passToken(Token t) {
             int fw = t.fireworks();
+            Set<String> originators = new HashSet<>(t.originators());
+
             if (Math.random() < p) {
                 for (String node : allNodes) {
-                    if (!node.equals(nodeName())) send(new Firework(t.round()), node);
+                    if (!node.equals(nodeName())) {
+                        send(new Firework(t.round(), nodeName()), node); // Name mitgeben
+                    }
                 }
                 fw++;
+                originators.add(nodeName()); // Uns selbst eintragen
             }
             p /= 2;
-            return new Token(t.round(), fw);
+            return new Token(t.round(), fw, originators);
         }
 
         @Override
         protected void engage() {
+            int lastProcessedRound = -1;
             while (true) {
                 ReceivedMessage rm = receive();
                 if (rm == null) return;
                 switch (rm.message()) {
-                    case Shutdown ignored -> { return; }
-                    case Firework ignored -> { /* consume – nur für Vollständigkeit */ }
+                    case Shutdown s -> { send(s, nextNode); return; }
+                    case Firework(int round, String from) -> {
+                        receivedInCurrentRound.add(from);
+                    }
                     case Token t -> {
+                        // Bei neuer Runde den lokalen Speicher leeren
+                        if (t.round() > lastProcessedRound) {
+                            receivedInCurrentRound.clear();
+                            lastProcessedRound = t.round();
+                        }
+
+                        // ERKENNUNGS-MECHANISMUS:
+                        // Prüfen, ob uns Raketen fehlen, die laut Token existieren sollten
+                        Set<String> expected = t.originators();
+                        if (!receivedInCurrentRound.containsAll(expected)) {
+                            System.err.printf("[INKONSISTENZ] %s: Token meldet Raketen von %s, aber real empfangen nur von %s%n",
+                                    nodeName(), expected, receivedInCurrentRound);
+                        }
+
                         Token updated = passToken(t);
                         send(updated, nextNode);
                     }
-                    default -> throw new IllegalStateException("Unerwartete Nachricht: " + rm.message());
+                    default -> throw new IllegalStateException("Unerwartet: " + rm.message());
                 }
             }
         }
@@ -105,26 +128,45 @@ public class TokenRingSimulation {
             List<Long> times = new ArrayList<>();
             long totalFw = 0;
             int emptyCount = 0;
+            int lastProcessedRound = -1;
 
             // Runde 0 starten: Initiator zündet als erster, dann Token absenden
             int fw0 = 0;
+            Set<String> initOriginators = new HashSet<>();
             if (Math.random() < p) {
                 for (String node : allNodes) {
-                    if (!node.equals(nodeName())) send(new Firework(0), node);
+                    if (!node.equals(nodeName())) send(new Firework(0, nodeName()), node);
                 }
                 fw0++;
+                initOriginators.add(nodeName());
             }
             p /= 2;
             long t0 = System.nanoTime();
-            send(new Token(0, fw0), nextNode);
+            send(new Token(0, fw0, initOriginators), nextNode); // Hier das Set mitgeben
 
             while (true) {
                 ReceivedMessage rm = receive();
                 if (rm == null) return;
                 switch (rm.message()) {
-                    case Firework ignored -> { /* consume */ }
+                    case Firework(int round, String from) -> {
+                        receivedInCurrentRound.add(from);
+                    }
                     case Shutdown ignored -> { return; }
-                    case Token(int round, int fw) -> {
+
+                    // Switch-Pattern entpackt jetzt auch das Set (originators)
+                    case Token(int round, int fw, Set<String> originators) -> {
+                        // Bei neuer Runde den lokalen Speicher leeren
+                        if (round > lastProcessedRound) {
+                            receivedInCurrentRound.clear();
+                            lastProcessedRound = round;
+                        }
+
+                        // ERKENNUNGS-MECHANISMUS AUCH FÜR INITIATOR:
+                        if (!receivedInCurrentRound.containsAll(originators)) {
+                            System.err.printf("[INKONSISTENZ] %s: Token meldet Raketen von %s, aber real empfangen nur von %s%n",
+                                    nodeName(), originators, receivedInCurrentRound);
+                        }
+
                         // Runde abgeschlossen
                         long elapsed = System.nanoTime() - t0;
                         times.add(elapsed);
@@ -144,15 +186,17 @@ public class TokenRingSimulation {
 
                         // Nächste Runde starten
                         int newFw = 0;
+                        Set<String> nextOriginators = new HashSet<>();
                         if (Math.random() < p) {
                             for (String node : allNodes) {
-                                if (!node.equals(nodeName())) send(new Firework(round + 1), node);
+                                if (!node.equals(nodeName())) send(new Firework(round + 1, nodeName()), node);
                             }
                             newFw++;
+                            nextOriginators.add(nodeName());
                         }
                         p /= 2;
                         t0 = System.nanoTime();
-                        send(new Token(round + 1, newFw), nextNode);
+                        send(new Token(round + 1, newFw, nextOriginators), nextNode); // Hier das neue Set mitgeben
                     }
                     default -> throw new IllegalStateException("Unerwartete Nachricht: " + rm.message());
                 }
