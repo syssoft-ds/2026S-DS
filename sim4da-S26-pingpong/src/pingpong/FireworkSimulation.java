@@ -5,14 +5,17 @@ import org.oxoo2a.sim4da.Node;
 import org.oxoo2a.sim4da.ReceivedMessage;
 import org.oxoo2a.sim4da.Simulator;
 
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Random;
+import java.util.Set;
 
 public class FireworkSimulation {
     private static final double DEFAULT_INITIAL_PROBABILITY = 0.5;
     private static final int DEFAULT_SILENT_ROUNDS = 3;
 
-    record Token(int round,
+    record Token(long tokenId,
+                 int round,
                  int hops,
                  int silentRounds,
                  boolean firedThisRound,
@@ -31,7 +34,13 @@ public class FireworkSimulation {
         private final boolean startsWithToken;
         private final boolean verbose;
         private final RoundStats roundStats;
+        private final ConsistencyMonitor consistencyMonitor;
+        private final Set<Long> processedTokenIds = new HashSet<>();
+        private final Set<Long> completedTokenIds = new HashSet<>();
+        private final Set<FireworkKey> seenFireworks = new HashSet<>();
         private double probability;
+        private int highestRound;
+        private boolean stopped;
 
         FireworkNode(int index,
                      int nodeCount,
@@ -40,7 +49,8 @@ public class FireworkSimulation {
                      long randomSeed,
                      boolean startsWithToken,
                      boolean verbose,
-                     RoundStats roundStats) {
+                     RoundStats roundStats,
+                     ConsistencyMonitor consistencyMonitor) {
             super(FireworkSimulation.nodeName(index));
             this.index = index;
             this.nodeCount = nodeCount;
@@ -51,12 +61,13 @@ public class FireworkSimulation {
             this.startsWithToken = startsWithToken;
             this.verbose = verbose;
             this.roundStats = roundStats;
+            this.consistencyMonitor = consistencyMonitor;
         }
 
         @Override
         protected void engage() {
             if (startsWithToken) {
-                processAndForward(new Token(1, 0, 0, false, 0, System.nanoTime()));
+                processAndForward(new Token(1L, 1, 0, 0, false, 0, System.nanoTime()));
             }
 
             while (true) {
@@ -73,6 +84,7 @@ public class FireworkSimulation {
                     }
                     case Firework firework -> handleFirework(firework);
                     case Stop stop -> {
+                        stopped = true;
                         if (index != 0) {
                             send(stop, nextNode);
                         }
@@ -88,8 +100,22 @@ public class FireworkSimulation {
         }
 
         private boolean handleToken(Token token) {
-            if (index == 0 && token.hops() >= nodeCount) {
+            if (stopped) {
+                report("token_after_stop", tokenDetails(token));
+                return false;
+            }
+            if (!isValidToken(token)) {
+                return false;
+            }
+            if (!isExpectedTokenReceiver(token)) {
+                return false;
+            }
+            if (index == 0 && token.hops() == nodeCount) {
                 return completeRound(token);
+            }
+            if (token.hops() >= nodeCount) {
+                report("token_hops_exceed_ring", tokenDetails(token));
+                return false;
             }
 
             processAndForward(token);
@@ -97,6 +123,20 @@ public class FireworkSimulation {
         }
 
         private boolean completeRound(Token token) {
+            if (index != 0) {
+                report("round_completed_by_non_initiator", tokenDetails(token));
+                return false;
+            }
+            if (token.hops() != nodeCount) {
+                report("round_completed_with_invalid_hops", tokenDetails(token));
+                return false;
+            }
+            if (!completedTokenIds.add(token.tokenId())) {
+                report("duplicate_round_completion", tokenDetails(token));
+                return false;
+            }
+
+            highestRound = Math.max(highestRound, token.round());
             roundStats.add(System.nanoTime() - token.startNanos());
             int silentRounds = token.firedThisRound() ? 0 : token.silentRounds() + 1;
 
@@ -106,12 +146,14 @@ public class FireworkSimulation {
             }
 
             if (silentRounds >= maxSilentRounds) {
+                stopped = true;
                 send(new Stop(), nextNode);
-                printResult(nodeCount, token.round(), token.multicasts(), roundStats);
+                printResult(nodeCount, token.round(), token.multicasts(), roundStats, consistencyMonitor);
                 return true;
             }
 
             processAndForward(new Token(
+                    token.tokenId() + 1,
                     token.round() + 1,
                     0,
                     silentRounds,
@@ -122,6 +164,16 @@ public class FireworkSimulation {
         }
 
         private void processAndForward(Token token) {
+            if (stopped) {
+                report("token_after_stop", tokenDetails(token));
+                return;
+            }
+            if (!processedTokenIds.add(token.tokenId())) {
+                report("duplicate_token_processing", tokenDetails(token));
+                return;
+            }
+
+            highestRound = Math.max(highestRound, token.round());
             boolean fires = random.nextDouble() < probability;
             boolean firedThisRound = token.firedThisRound();
             int multicasts = token.multicasts();
@@ -137,6 +189,7 @@ public class FireworkSimulation {
 
             probability /= 2.0;
             send(new Token(
+                    token.tokenId(),
                     token.round(),
                     token.hops() + 1,
                     token.silentRounds(),
@@ -146,10 +199,82 @@ public class FireworkSimulation {
         }
 
         private void handleFirework(Firework firework) {
+            if (stopped) {
+                report("firework_after_stop", fireworkDetails(firework));
+                return;
+            }
+            if (firework.round() < highestRound) {
+                report("delayed_firework", fireworkDetails(firework) + " highestRound=" + highestRound);
+                return;
+            }
+            if (firework.round() > highestRound + 1) {
+                report("future_firework", fireworkDetails(firework) + " highestRound=" + highestRound);
+                return;
+            }
+            if (!seenFireworks.add(new FireworkKey(firework.nodeName(), firework.round()))) {
+                report("duplicate_firework", fireworkDetails(firework));
+                return;
+            }
+            highestRound = Math.max(highestRound, firework.round());
             if (verbose) {
                 System.out.printf("%s received firework from %s in round %d%n",
                         nodeName(), firework.nodeName(), firework.round());
             }
+        }
+
+        private boolean isValidToken(Token token) {
+            if (token.tokenId() < 1) {
+                report("invalid_token_id", tokenDetails(token));
+                return false;
+            }
+            if (token.round() < 1) {
+                report("invalid_token_round", tokenDetails(token));
+                return false;
+            }
+            if (token.hops() < 0 || token.hops() > nodeCount) {
+                report("invalid_token_hops", tokenDetails(token));
+                return false;
+            }
+            if (token.silentRounds() < 0) {
+                report("invalid_silent_rounds", tokenDetails(token));
+                return false;
+            }
+            if (token.multicasts() < 0) {
+                report("invalid_multicast_count", tokenDetails(token));
+                return false;
+            }
+            if (token.startNanos() <= 0) {
+                report("invalid_token_start_time", tokenDetails(token));
+                return false;
+            }
+            return true;
+        }
+
+        private boolean isExpectedTokenReceiver(Token token) {
+            int expectedIndex = token.hops() % nodeCount;
+            if (expectedIndex != index) {
+                report("unexpected_token_receiver",
+                        tokenDetails(token) + " expectedNode=" + FireworkSimulation.nodeName(expectedIndex));
+                return false;
+            }
+            return true;
+        }
+
+        private void report(String reason, String details) {
+            consistencyMonitor.report(nodeName(), reason, details);
+        }
+
+        private String tokenDetails(Token token) {
+            return "tokenId=" + token.tokenId()
+                    + " round=" + token.round()
+                    + " hops=" + token.hops()
+                    + " silentRounds=" + token.silentRounds()
+                    + " firedThisRound=" + token.firedThisRound()
+                    + " multicasts=" + token.multicasts();
+        }
+
+        private String fireworkDetails(Firework firework) {
+            return "fireworkNode=" + firework.nodeName() + " round=" + firework.round();
         }
     }
 
@@ -162,6 +287,7 @@ public class FireworkSimulation {
         }
 
         RoundStats roundStats = new RoundStats();
+        ConsistencyMonitor consistencyMonitor = new ConsistencyMonitor();
         Random nodeSeedGenerator = new Random(config.seed());
         for (int i = 0; i < config.nodeCount(); i++) {
             new FireworkNode(
@@ -172,21 +298,28 @@ public class FireworkSimulation {
                     nodeSeedGenerator.nextLong(),
                     i == 0,
                     config.verbose(),
-                    roundStats);
+                    roundStats,
+                    consistencyMonitor);
         }
 
         simulator.simulate();
         simulator.shutdown();
     }
 
-    private static void printResult(int nodeCount, int rounds, int multicasts, RoundStats roundStats) {
-        System.out.printf(Locale.US, "RESULT n=%d rounds=%d multicasts=%d minMs=%.3f avgMs=%.3f maxMs=%.3f%n",
+    private static void printResult(int nodeCount,
+                                    int rounds,
+                                    int multicasts,
+                                    RoundStats roundStats,
+                                    ConsistencyMonitor consistencyMonitor) {
+        System.out.printf(Locale.US,
+                "RESULT n=%d rounds=%d multicasts=%d minMs=%.3f avgMs=%.3f maxMs=%.3f consistencyWarnings=%d%n",
                 nodeCount,
                 rounds,
                 multicasts,
                 roundStats.minMillis(),
                 roundStats.avgMillis(),
-                roundStats.maxMillis());
+                roundStats.maxMillis(),
+                consistencyMonitor.warnings());
     }
 
     private static String nodeName(int index) {
@@ -220,6 +353,8 @@ public class FireworkSimulation {
             return new SimulationConfig(nodeCount, initialProbability, maxSilentRounds, seed, verbose);
         }
     }
+
+    private record FireworkKey(String nodeName, int round) {}
 
     private static final class RoundStats {
         private int count;

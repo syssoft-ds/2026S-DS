@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 
-NODE_COUNTS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384,] # until 2exp14
+NODE_COUNTS = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024] # until 2exp14
 RUNS_PER_NODE_COUNT = 10
 INITIAL_PROBABILITY = 0.5
 SILENT_ROUNDS = 3
@@ -19,6 +19,7 @@ CLASS_PATH = os.pathsep.join(["build/classes/java/main", "lib/sim4da.jar"])
 RESULT_PATTERN = re.compile(
     r"RESULT n=(?P<n>\d+) rounds=(?P<rounds>\d+) multicasts=(?P<multicasts>\d+) "
     r"minMs=(?P<min_ms>\d+\.\d+) avgMs=(?P<avg_ms>\d+\.\d+) maxMs=(?P<max_ms>\d+\.\d+)"
+    r"(?: consistencyWarnings=(?P<consistency_warnings>\d+))?"
 )
 
 
@@ -101,6 +102,7 @@ def run_one_experiment(project_dir, run_dir, run_index, repetition, node_count):
         "minMs": float(result["min_ms"]) if result else None,
         "avgMs": float(result["avg_ms"]) if result else None,
         "maxMs": float(result["max_ms"]) if result else None,
+        "consistencyWarnings": int(result["consistency_warnings"] or 0) if result else None,
         "durationSeconds": round(duration_seconds, 3),
         "seed": seed,
         "logPath": str(log_path),
@@ -135,6 +137,7 @@ def summarize_rows(node_count, rows):
         **metric_stats(node_rows, "minMs"),
         **metric_stats(node_rows, "avgMs"),
         **metric_stats(node_rows, "maxMs"),
+        **metric_stats(node_rows, "consistencyWarnings"),
         **metric_stats(node_rows, "durationSeconds"),
     }
 
