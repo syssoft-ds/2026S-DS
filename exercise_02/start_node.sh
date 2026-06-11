@@ -13,7 +13,7 @@
 #   192.168.1.11:50000
 #   192.168.1.12:50000
 
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROCESS_PY="$SCRIPT_DIR/process.py"
@@ -58,13 +58,14 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Read peers file (skip comments and blank lines)
+# Read peers file (skip comments and blank lines) via grep — bash 3.2 safe
+TMPFILE=$(mktemp)
+grep -v '^[[:space:]]*#' "$PEERS_FILE" | grep -v '^[[:space:]]*$' > "$TMPFILE"
 PEER_ARRAY=()
 while IFS= read -r line; do
-    [[ "$line" =~ ^[[:space:]]*# ]] && continue
-    [[ -z "${line//[[:space:]]/}" ]] && continue
     PEER_ARRAY+=("$line")
-done < "$PEERS_FILE"
+done < "$TMPFILE"
+rm -f "$TMPFILE"
 
 N="${#PEER_ARRAY[@]}"
 [[ $N -lt 2 ]] && { echo "ERROR: need at least 2 peers in $PEERS_FILE" >&2; exit 1; }

@@ -98,13 +98,17 @@ def main() -> None:
         print(f'ERROR: --id {proc_id} out of range for {n} peers', file=sys.stderr)
         sys.exit(1)
 
-    _my_ip, my_port = peers[proc_id]
+    my_ip, my_port = peers[proc_id]
     next_ip, next_port = peers[(proc_id + 1) % n]
+
+    # Use local peer IP as multicast interface if not explicitly given.
+    # On macOS the kernel needs a concrete interface; without one it errors.
+    mcast_iface = args.mcast_iface if args.mcast_iface else my_ip
 
     ring_sock = create_ring_recv_sock(my_port)
     ring_sock.settimeout(args.timeout)
-    mcast_send_sock = create_mcast_send_sock(args.mcast_ttl, args.mcast_iface)
-    mcast_recv_sock = create_mcast_recv_sock(args.mcast_group, args.mcast_port, args.mcast_iface)
+    mcast_send_sock = create_mcast_send_sock(args.mcast_ttl, mcast_iface)
+    mcast_recv_sock = create_mcast_recv_sock(args.mcast_group, args.mcast_port, mcast_iface)
 
     round_times: list[float] = []
     total_fireworks: int = 0
