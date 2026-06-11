@@ -65,27 +65,36 @@ def run_admin(repository_dir, project_dir):
     print(f"ring hosts by node: {host_by_node}")
 
     rows = []
-    for run_index, repetition in enumerate(range(1, DEFAULT_RUNS_PER_NODE_COUNT + 1)):
-        print(
-            f"run {run_index}: n={node_count} physical nodes, repetition={repetition}, "
-            f"per-node JVM heap=-Xmx{DEFAULT_HEAP_MB}m"
-        )
-        wait_for_udp_ports(BASE_PORT, [0], run_index)
-        row = run_one_admin_experiment(
-            project_dir=project_dir,
-            run_dir=run_dir,
-            run_index=run_index,
-            repetition=repetition,
-            node_count=node_count,
-            workers=workers,
-            host_by_node=host_by_node,
-        )
-        rows.append(row)
-        print(row)
-
-    for worker in workers:
-        send_message(worker.file, {"type": "shutdown"})
-        worker.close()
+    try:
+        for run_index, repetition in enumerate(range(1, DEFAULT_RUNS_PER_NODE_COUNT + 1)):
+            print(
+                f"run {run_index}: n={node_count} physical nodes, repetition={repetition}, "
+                f"per-node JVM heap=-Xmx{DEFAULT_HEAP_MB}m"
+            )
+            try:
+                wait_for_udp_ports(BASE_PORT, [0], run_index)
+                row = run_one_admin_experiment(
+                    project_dir=project_dir,
+                    run_dir=run_dir,
+                    run_index=run_index,
+                    repetition=repetition,
+                    node_count=node_count,
+                    workers=workers,
+                    host_by_node=host_by_node,
+                )
+            except Exception as exception:
+                row = failed_row(run_index, repetition, node_count, str(exception), run_dir)
+                print(f"run {run_index} failed: {exception}")
+                cleanup_workers(workers, run_index, fail_silent=True)
+            rows.append(row)
+            print(row)
+    finally:
+        for worker in workers:
+            try:
+                send_message(worker.file, {"type": "shutdown"})
+            except Exception:
+                pass
+            worker.close()
 
     raw_csv_path = run_dir / "raw-runs.csv"
     summary_csv_path = run_dir / "summary.csv"
@@ -168,6 +177,7 @@ def run_one_admin_experiment(project_dir,
             "durationSeconds": round(duration_seconds, 3),
             "heapMbPerNode": DEFAULT_HEAP_MB,
             "logDir": str(run_dir),
+            "error": "",
         }
     finally:
         terminate_processes(processes)
@@ -188,7 +198,13 @@ def run_worker(repository_dir, project_dir):
         send_message(file, {"type": "hello", "workerId": WORKER_ID, "nodeHost": THIS_NODE_HOST})
 
         while True:
-            message = read_message(file)
+            try:
+                message = read_message(file)
+            except RuntimeError as exception:
+                print(f"admin disconnected: {exception}")
+                terminate_processes(processes)
+                close_files(log_files)
+                return
             if message["type"] == "shutdown":
                 terminate_processes(processes)
                 close_files(log_files)
@@ -233,6 +249,7 @@ def run_worker(repository_dir, project_dir):
                     "type": "failed",
                     "runIndex": run_index,
                     "error": str(exception),
+                    "logTail": log_tail(run_dir / f"run{run_index}-node{node_index}.log"),
                 })
 
 
@@ -293,9 +310,30 @@ def wait_for_worker_ready(workers, run_index):
         if message.get("runIndex") != run_index:
             raise RuntimeError(f"worker {worker.worker_id} returned message for wrong run: {message}")
         if message["type"] == "failed":
-            raise RuntimeError(f"worker {worker.worker_id} failed startup: {message['error']}")
+            raise RuntimeError(
+                f"worker {worker.worker_id} failed startup: {message['error']}\n"
+                f"{message.get('logTail', '')}"
+            )
         if message["type"] != "ready":
             raise RuntimeError(f"worker {worker.worker_id} returned unexpected message: {message}")
+
+
+def failed_row(run_index, repetition, node_count, error, run_dir):
+    return {
+        "runIndex": run_index,
+        "n": node_count,
+        "repetition": repetition,
+        "status": "failed",
+        "rounds": None,
+        "multicasts": None,
+        "minMs": None,
+        "avgMs": None,
+        "maxMs": None,
+        "durationSeconds": None,
+        "heapMbPerNode": DEFAULT_HEAP_MB,
+        "logDir": str(run_dir),
+        "error": error,
+    }
 
 
 def cleanup_workers(workers, run_index, fail_silent=False):
@@ -470,7 +508,17 @@ def wait_for_nodes_ready(run_dir, run_index, node_indexes, processes):
     while pending and time.monotonic() < deadline:
         failed_pids = [process.pid for process in processes if process.poll() is not None]
         if failed_pids:
-            raise RuntimeError(f"run {run_index}: node process exited during startup: {failed_pids[:8]}")
+            log_tails = []
+            for node_index in sorted(pending):
+                log_path = run_dir / f"run{run_index}-node{node_index}.log"
+                tail = log_tail(log_path)
+                if tail:
+                    log_tails.append(f"{log_path}:\n{tail}")
+            details = "\n\n".join(log_tails)
+            raise RuntimeError(
+                f"run {run_index}: node process exited during startup: {failed_pids[:8]}"
+                + (f"\n{details}" if details else "")
+            )
 
         for node_index in list(pending):
             log_path = run_dir / f"run{run_index}-node{node_index}.log"
@@ -489,6 +537,14 @@ def log_contains(log_path, text):
         return False
 
     return text in log_path.read_text(encoding="utf-8", errors="replace")
+
+
+def log_tail(log_path, line_count=20):
+    if not log_path.exists():
+        return ""
+
+    lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    return "\n".join(lines[-line_count:])
 
 
 def wait_for_initiator(initiator, timeout_seconds):
