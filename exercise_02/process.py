@@ -82,6 +82,8 @@ def main() -> None:
                         help='Multicast TTL (1=localhost only, 2+=LAN)')
     parser.add_argument('--mcast-iface', type=str, default='',
                         help='Local IP of the network interface for multicast (optional)')
+    parser.add_argument('--no-multicast', action='store_true',
+                        help='Disable multicast; send fireworks as n-1 unicasts to ring ports')
     parser.add_argument('--start-delay', type=float, default=0.0,
                         help='Seconds to wait before sending initial token (process 0 only)')
     parser.add_argument('--timeout', type=float, default=120.0,
@@ -101,23 +103,33 @@ def main() -> None:
     my_ip, my_port = peers[proc_id]
     next_ip, next_port = peers[(proc_id + 1) % n]
 
-    # Use local peer IP as multicast interface if not explicitly given.
-    # On macOS the kernel needs a concrete interface; without one it errors.
-    mcast_iface = args.mcast_iface if args.mcast_iface else my_ip
-
     ring_sock = create_ring_recv_sock(my_port)
     ring_sock.settimeout(args.timeout)
-    mcast_send_sock = create_mcast_send_sock(args.mcast_ttl, mcast_iface)
-    mcast_recv_sock = create_mcast_recv_sock(args.mcast_group, args.mcast_port, mcast_iface)
+
+    if not args.no_multicast:
+        # Use local peer IP as multicast interface if not explicitly given.
+        mcast_iface = args.mcast_iface if args.mcast_iface else my_ip
+        mcast_send_sock = create_mcast_send_sock(args.mcast_ttl, mcast_iface)
+        mcast_recv_sock = create_mcast_recv_sock(args.mcast_group, args.mcast_port, mcast_iface)
+    else:
+        mcast_send_sock = None
+        mcast_recv_sock = None
 
     round_times: list[float] = []
     total_fireworks: int = 0
 
     def fire_firework(round_num: int) -> None:
-        msg = json.dumps({'type': 'firework', 'from': proc_id, 'round': round_num}).encode()
-        mcast_send_sock.sendto(msg, (args.mcast_group, args.mcast_port))
+        payload = json.dumps({'type': 'firework', 'from': proc_id, 'round': round_num}).encode()
+        if args.no_multicast:
+            for i, (ip, port) in enumerate(peers):
+                if i != proc_id:
+                    udp_send(payload, ip, port)
+        else:
+            mcast_send_sock.sendto(payload, (args.mcast_group, args.mcast_port))
 
     def drain_mcast() -> int:
+        if mcast_recv_sock is None:
+            return 0
         count = 0
         try:
             while True:
@@ -153,6 +165,9 @@ def main() -> None:
                 sys.exit(1)
 
             msg = json.loads(data.decode())
+
+            if msg['type'] == 'firework':
+                continue  # unicast broadcast received — discard, count lives in token
 
             if msg['type'] == 'terminate':
                 if proc_id == 0:
@@ -200,8 +215,10 @@ def main() -> None:
 
     finally:
         ring_sock.close()
-        mcast_send_sock.close()
-        mcast_recv_sock.close()
+        if mcast_send_sock:
+            mcast_send_sock.close()
+        if mcast_recv_sock:
+            mcast_recv_sock.close()
 
 
 if __name__ == '__main__':
