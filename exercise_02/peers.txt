@@ -3,6 +3,5 @@
 # Replace with real IP addresses before running.
 #
 # Example for a 3-node ring:
-192.168.1.10:50000
-192.168.1.11:50000
-192.168.1.12:50000
+192.168.178.160:50000
+192.168.178.151:50000
