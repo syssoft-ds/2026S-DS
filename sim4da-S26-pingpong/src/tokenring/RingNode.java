@@ -74,6 +74,8 @@ public class RingNode {
 
                     TokenMessage token = TokenMessage.parse(datagram.text());
 
+                    // Erste Node hat den Token bekommen -> log alle Daten aus dem Token und starte neue Runde
+                    // Zusätzlich Check ob k Runden still waren
                     if (nodeIndex == 0 && token.hops() >= nodeCount) {
                         long roundTimeNanos = System.nanoTime() - token.startNanos();
                         roundStats.add(roundTimeNanos);
@@ -164,6 +166,9 @@ public class RingNode {
                     socket.receive(packet);
                     String text = new String(packet.getData(), packet.getOffset(), packet.getLength(),
                             StandardCharsets.UTF_8);
+
+                    // Hier wird auch der Stop multicast der ersten Node abgefangen damit alle java prozesse vollständig
+                    // terminieren und die ports wieder freigegeben werden für den nächsten Tokenring
                     if (text.startsWith(FIREWORK + "|")) {
                         System.out.printf("%s received multicast %s%n", nodeName, text);
                     } else if (text.equals(STOP)) {
