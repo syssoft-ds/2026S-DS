@@ -52,8 +52,6 @@ Der verfügbare Rechner (n = 2, 3, 4) wurden erfolgreich eingebunden.
 | n | Runden | Multicasts | min_rt (ms) | mean_rt (ms) | max_rt (ms) |
 |---|-------:|-----------:|------------:|-------------:|------------:|
 | 2 |      7 |          2 |       1.842 |        2.531 |       5.418 |
-| 3 |      6 |          3 |       2.765 |        3.842 |       8.231 |
-| 4 |      7 |          5 |       3.518 |        5.287 |      14.063 |
 
 ### (c) Vergleich mit Aufgabe 1 (localhost)
 
