@@ -1,0 +1,8 @@
+# Ring-Topologie fuer Aufgabe 2: eine Zeile "host:port" pro Prozess.
+# Zeilenreihenfolge = Ringreihenfolge, Zeilenindex (ab 0) = Prozess-ID.
+# Diese Datei muss auf allen beteiligten Rechnern identisch sein.
+#
+# Beispiel fuer 3 Rechner im selben LAN:
+192.168.1.10:20000
+192.168.1.11:20000
+192.168.1.12:20000
