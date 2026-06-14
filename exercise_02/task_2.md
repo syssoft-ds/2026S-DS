@@ -58,7 +58,6 @@ Der verfügbare Rechner (n = 2, 3, 4) wurden erfolgreich eingebunden.
 | n | mean_rt localhost (ms) | mean_rt LAN (ms) | Faktor |
 |---|----------------------:|-----------------:|-------:|
 | 2 |                  0.412 |            2.531 |    6.1 |
-| 4 |                  0.988 |            5.287 |    5.4 |
 
 ### Beobachtungen
 
