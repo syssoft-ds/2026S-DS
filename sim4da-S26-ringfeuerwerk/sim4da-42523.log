@@ -1,0 +1,121 @@
+[0,1] registered with the network
+[1,1] registered with the network
+[2,1] registered with the network
+[3,1] registered with the network
+[4,1] registered with the network
+[Simulator,1] sim4da Summer 2026 - simulation started.
+[0,2] sending to 1
+[1,2] received from 0
+[1,3] broadcasting
+[1,4] sending to 2
+[4,2] received from 1
+[3,2] received from 1
+[0,3] received from 1
+[2,2] received from 1
+[2,3] received from 1
+[2,4] sending to 3
+[3,3] received from 2
+[3,4] broadcasting
+[0,4] received from 3
+[1,5] received from 3
+[3,5] sending to 4
+[4,3] received from 3
+[4,4] received from 3
+[4,5] sending to 0
+[2,5] received from 3
+[0,5] received from 4
+[0,6] broadcasting
+[1,6] received from 0
+[0,7] sending to 1
+[1,7] received from 0
+[1,8] broadcasting
+[1,9] sending to 2
+[2,6] received from 0
+[2,7] received from 1
+[2,8] received from 1
+[2,9] sending to 3
+[3,6] received from 0
+[3,7] received from 1
+[3,8] received from 2
+[3,9] sending to 4
+[4,6] received from 0
+[4,7] received from 1
+[4,8] received from 3
+[4,9] sending to 0
+[0,8] received from 1
+[0,9] received from 4
+[0,10] sending to 1
+[1,10] received from 0
+[1,11] sending to 2
+[2,10] received from 1
+[2,11] sending to 3
+[3,10] received from 2
+[3,11] sending to 4
+[4,10] received from 3
+[4,11] sending to 0
+[0,11] received from 4
+[0,12] sending to 1
+[1,12] received from 0
+[1,13] sending to 2
+[2,12] received from 1
+[2,13] sending to 3
+[3,12] received from 2
+[3,13] sending to 4
+[4,12] received from 3
+[4,13] sending to 0
+[0,13] received from 4
+[0,14] sending to 1
+[1,14] received from 0
+[1,15] broadcasting
+[1,16] sending to 2
+[0,15] received from 1
+[3,14] received from 1
+[2,14] received from 1
+[2,15] received from 1
+[2,16] sending to 3
+[4,14] received from 1
+[3,15] received from 2
+[3,16] sending to 4
+[4,15] received from 3
+[4,16] sending to 0
+[0,16] received from 4
+[0,17] sending to 1
+[1,17] received from 0
+[1,18] sending to 2
+[2,17] received from 1
+[2,18] sending to 3
+[3,17] received from 2
+[3,18] sending to 4
+[4,17] received from 3
+[4,18] sending to 0
+[0,18] received from 4
+[0,19] sending to 1
+[1,19] received from 0
+[1,20] sending to 2
+[2,19] received from 1
+[2,20] sending to 3
+[3,19] received from 2
+[3,20] sending to 4
+[4,19] received from 3
+[4,20] sending to 0
+[0,20] received from 4
+[0,21] sending to 1
+[1,21] received from 0
+[1,22] sending to 2
+[2,21] received from 1
+[2,22] sending to 3
+[3,21] received from 2
+[3,22] sending to 4
+[4,21] received from 3
+[4,22] sending to 0
+[0,22] received from 4
+[0,23] sending to 1
+[1,23] received from 0
+[1,24] sending to 2
+[2,23] received from 1
+[2,24] sending to 3
+[3,23] received from 2
+[3,24] sending to 4
+[4,23] received from 3
+[4,24] sending to 0
+[Simulator,2] sim4da Summer 2026 - simulation ended.
