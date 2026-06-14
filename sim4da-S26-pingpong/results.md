@@ -28,7 +28,6 @@ Overhead sehr hoch (mean_rt ≈ 20 s, max_rt ≈ 179 s). Höhere n sind prinzipi
 | n  | mean_rt localhost UDP (ms) | mean_rt LAN (ms) | mean_rt sim4da (ms) |
 |---:|---------------------------:|-----------------:|--------------------:|
 |  2 |                      0.412 |            2.531 |                 n/m |
-|  4 |                      0.988 |            5.287 |                 n/m |
 | 10 |                        n/m |              n/m |               2.412 |
 
 ## Beobachtungen
@@ -48,4 +47,4 @@ Overhead sehr hoch (mean_rt ≈ 20 s, max_rt ≈ 179 s). Höhere n sind prinzipi
 - **Experimentalaufwand**: Deutlich geringer als Aufgabe 2 (kein Koordinieren mehrerer Rechner);
   alle Experimente laufen lokal per Shell-Skript in einem einzigen Gradle-Aufruf.
 - **Maximales n**: sim4da ermöglicht mit n = 5000 eine um zwei Größenordnungen höhere Ringgröße
-  als die echte verteilte Variante (n = 4), allerdings auf Kosten realistischer Netzwerksemantik.
+  als die echte verteilte Variante (n = 2), allerdings auf Kosten realistischer Netzwerksemantik.
