@@ -45,7 +45,7 @@ Jeder Prozess läuft auf einem eigenen Rechner und wird mit expliziten Peer-Adre
 ### (a) Maximales n
 
 **Maximales erfolgreich getestetes n: 2**  
-Der verfügbare Rechner (n = 2, 3, 4) wurden erfolgreich eingebunden.
+Der verfügbare Rechner (n = 2) wurden erfolgreich eingebunden.
 
 ### (b) Statistische Messwerte
 
@@ -67,6 +67,8 @@ Der verfügbare Rechner (n = 2, 3, 4) wurden erfolgreich eingebunden.
   ausschließlich durch die echte UDP-Unicast-Latenz pro Hop
 - **Skalierung mit n**: Ähnlich wie in Aufgabe 1 wächst mean_rt annähernd linear mit n; der
   Anstieg pro zusätzlichem Knoten beträgt im LAN ca. +1.0 ms (gegenüber +0.25 ms auf localhost).
+  Jedoch wurde dies nur auf einem Ring mit n = 2 gemessen (ein zusätzlicher Rechner). Die Aussagekraft ist hier
+  fragwürdig.
 - **Keine Paketverluste** festgestellt; alle Runs terminierten sauber nach k = 3 leeren Runden.
 - **Maximales n** ist hier nicht durch die Implementierung oder das Netzwerk beschränkt, sondern
   durch die Anzahl verfügbarer Maschinen
