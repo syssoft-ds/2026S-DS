@@ -44,7 +44,7 @@ Jeder Prozess läuft auf einem eigenen Rechner und wird mit expliziten Peer-Adre
 
 ### (a) Maximales n
 
-**Maximales erfolgreich getestetes n: 4**  
+**Maximales erfolgreich getestetes n: 2**  
 Der verfügbare Rechner (n = 2, 3, 4) wurden erfolgreich eingebunden.
 
 ### (b) Statistische Messwerte
