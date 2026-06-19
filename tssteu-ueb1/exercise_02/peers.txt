@@ -1,0 +1,7 @@
+# peers.txt — Token Ring peer list for Exercise 2
+# One ip:port per line, in ring order (node 0 first).
+# Replace with real IP addresses before running.
+#
+# Example for a 3-node ring:
+192.168.178.160:50000
+192.168.178.151:50000
