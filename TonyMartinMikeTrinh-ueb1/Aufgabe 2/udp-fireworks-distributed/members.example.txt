@@ -1,0 +1,12 @@
+# Membership-Tabelle fuer Aufgabe 2 (verteilt).
+# Eine Zeile pro Ring-Knoten:  <rank> <host/IP> <port>
+#   - rank 0 = Initiator (gibt die SUMMARY aus) -> sinnvollerweise der PC.
+#   - Auf verschiedenen Rechnern darf derselbe Port verwendet werden (eigener Host).
+#   - Leerzeilen und '#'-Kommentare werden ignoriert.
+#
+# Diese Datei nach 'members.txt' kopieren und die echten IPs eintragen
+#   (PC: 'ipconfig' -> IPv4 des WLAN-Adapters; Handy in Termux: 'ip addr' bzw. 'ifconfig').
+# 'members.txt' ist .gitignore't (rechnerspezifisch, keine IPs einchecken).
+
+0 192.168.1.50 6000
+1 192.168.1.77 6000

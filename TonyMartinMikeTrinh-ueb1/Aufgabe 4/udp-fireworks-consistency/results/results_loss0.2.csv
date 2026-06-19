@@ -1,0 +1,6 @@
+n,repeat,status,verdict,multicasts,obs_min,obs_max,disagreeing,loss,rounds,rt_min_ms,rt_mean_ms,rt_max_ms
+8,1,ok,INCONSISTENT,9,7,8,8/8,0.2,7,0.463,2.58,14.01
+32,1,ok,INCONSISTENT,31,22,28,32/32,0.2,8,1.414,4.226,20.744
+64,1,ok,INCONSISTENT,58,40,53,64/64,0.2,8,1.346,6.924,30.655
+128,1,ok,INCONSISTENT,128,91,117,128/128,0.2,10,1.459,15.823,107.439
+256,1,ok,INCONSISTENT,256,187,221,256/256,0.2,12,3.005,33.467,264.968

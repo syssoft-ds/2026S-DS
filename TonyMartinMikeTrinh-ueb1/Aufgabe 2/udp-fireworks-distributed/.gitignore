@@ -1,0 +1,24 @@
+# Gradle
+.gradle/
+build/
+
+# IDE (VS Code Java / Eclipse legen bin/ + Metadaten an)
+bin/
+.settings/
+.classpath
+.project
+.vscode/
+
+# Experiment-Artefakte
+logs/
+results/
+results_distributed.csv
+
+# Laufzeit-Konfiguration (rechnerspezifische IPs -> nicht einchecken)
+members.txt
+
+# Python
+__pycache__/
+.venv/
+venv/
+*.pyc

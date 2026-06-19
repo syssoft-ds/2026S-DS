@@ -1,0 +1,20 @@
+# Gradle
+.gradle/
+build/
+
+# IDE (VS Code Java / Eclipse legen bin/ + Metadaten an)
+bin/
+.settings/
+.classpath
+.project
+.vscode/
+
+# Experiment-Artefakte
+logs/
+results/
+
+# Python
+__pycache__/
+.venv/
+venv/
+*.pyc

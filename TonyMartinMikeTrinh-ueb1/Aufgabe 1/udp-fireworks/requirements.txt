@@ -1,0 +1,3 @@
+# Nur fuer die Plots im Orchestrator-Script benoetigt.
+# Installation:  python -m pip install -r requirements.txt
+matplotlib>=3.7
