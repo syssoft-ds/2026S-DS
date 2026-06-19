@@ -1,0 +1,34 @@
+.DS_Store
+**/.DS_Store
+
+# Test Skripts
+udp_check.py
+selftest.py
+fw_diag.py
+
+# Excel
+results_klein.csv
+
+# Gradle
+.gradle/
+**/.gradle/
+build/
+**/build/
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+.claude/
+**/.claude/
+
+# OS / misc
+Thumbs.db
+#results.csv
+#stats/
+#results/
+results_grenze/
+results_gross/
+*.png
+sim4da-*.log
+ring.json
