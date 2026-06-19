@@ -1,0 +1,21 @@
+.DS_Store
+**/.DS_Store
+
+# Gradle
+.gradle/
+**/.gradle/
+build/
+**/build/
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+.claude/
+**/.claude/
+
+# OS / misc
+Thumbs.db
+
+venv/
+*.log
