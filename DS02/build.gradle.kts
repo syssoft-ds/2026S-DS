@@ -28,6 +28,15 @@ sourceSets {
     }
 }
 
+application {
+    mainClass = "bank.BankSnapshot"
+}
+
+tasks.named<JavaExec>("run") {
+    // CLI-Argumente durchreichen, z. B. ./gradlew run --args="8"
+    standardInput = System.`in`
+}
+
 tasks.named<Test>("test") {
     modularity.inferModulePath = false
     useJUnitPlatform()
@@ -35,16 +44,4 @@ tasks.named<Test>("test") {
         events("passed", "failed", "skipped")
         showStandardStreams = true
     }
-}
-
-application {
-    //mainClass = "pingpong.PingPongSimulation"
-    //mainClass = "firework.FireworkSimulation"
-    mainClass = "firework.Consistent_FireworkSimulation"
-    applicationDefaultJvmArgs = listOf("-Xmx8g")
-}
-
-tasks.named<JavaExec>("run") {
-    // Forward CLI args: ./gradlew run --args="20"
-    standardInput = System.`in`
 }
