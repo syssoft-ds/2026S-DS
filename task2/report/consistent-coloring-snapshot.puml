@@ -1,0 +1,57 @@
+@startuml
+title Coloring snapshot: consistent cut with channel state
+
+participant Coordinator
+participant P0
+participant P1
+participant P2
+
+note over P0,P2
+BLACK = before cut
+WHITE = after cut
+Initial total S = 3000
+end note
+
+== Normal traffic before snapshot ==
+P0 -> P0: withdraw 700\nP0 balance = 300
+P0 -[#red,dashed]> P1: Transfer(700, BLACK, null)\nnot delivered yet
+
+== Coordinator starts snapshot ==
+Coordinator -> P0: StartSnapshot(coloring-1, WHITE)
+P0 -> P0: turn WHITE\nrecord balance=300
+P0 --> Coordinator: LocalState(P0, 300)
+
+P0 -> P2: Transfer(50, WHITE, coloring-1)
+
+note right of P2
+Variant 2:
+WHITE transfer is implicit
+(state?, WHITE).
+P2 turns WHITE before processing it.
+end note
+P2 -> P2: turn WHITE\nrecord balance=1000\nthen deposit 50
+P2 --> Coordinator: LocalState(P2, 1000)
+
+Coordinator -> P1: StartSnapshot(coloring-1, WHITE)
+P1 -> P1: turn WHITE\nrecord balance=1000
+P1 --> Coordinator: LocalState(P1, 1000)
+
+== Delayed BLACK transfer arrives ==
+P0 -[#red]> P1: Transfer(700, BLACK, null)
+note right of P1
+P1 is already WHITE.
+The BLACK transfer was sent before P0's cut
+and arrived after P1's cut.
+It is recorded as channel state.
+end note
+P1 --> Coordinator: ChannelState(P0, P1, 700)
+P1 -> P1: deposit 700\nlive balance = 1700
+
+note right of Coordinator
+Snapshot total:
+local states = 300 + 1000 + 1000 = 2300
+channel states = 700
+total = 3000 = S
+end note
+
+@enduml

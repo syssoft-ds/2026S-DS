@@ -1,0 +1,2 @@
+n,runs,failedRuns,roundsMin,roundsMax,roundsMean,multicastsMin,multicastsMax,multicastsMean,durationSecondsMin,durationSecondsMax,durationSecondsMean,heapMbPerNode
+2,10,0,3,8,4.7,0,3,1.5,0.235,0.922,0.353,512

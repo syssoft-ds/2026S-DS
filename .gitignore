@@ -16,3 +16,8 @@ build/
 
 # OS / misc
 Thumbs.db
+
+# python
+.venv
+
+*.log
