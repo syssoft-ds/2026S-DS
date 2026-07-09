@@ -1,0 +1,13 @@
+node_count,frequency,min_wait_ms,max_wait_ms,naive_snapshots,naive_inconsistent,naive_average_abs_error,coloring_consistent,coloring_channel_sum,coloring_control_messages,naive_control_messages
+3,fast,30,90,3,3,2079.00,true,2316,13,6
+3,medium,100,250,3,3,1396.33,true,862,8,6
+3,slow,250,500,3,3,760.00,true,0,6,6
+5,fast,30,90,3,3,2888.00,true,3854,21,10
+5,medium,100,250,3,3,2007.33,true,2035,14,10
+5,slow,250,500,3,3,962.33,true,1657,13,10
+8,fast,30,90,3,3,5957.00,true,6785,36,16
+8,medium,100,250,3,3,2296.00,true,4373,21,16
+8,slow,250,500,3,3,1175.00,true,864,19,16
+16,fast,30,90,3,3,9864.67,true,8019,65,32
+16,medium,100,250,3,3,5755.33,true,6225,44,32
+16,slow,250,500,3,3,3931.33,true,6254,46,32

@@ -1,0 +1,4 @@
+sim4da-*.log
+**/build/
+**/.gradle/
+**/out/

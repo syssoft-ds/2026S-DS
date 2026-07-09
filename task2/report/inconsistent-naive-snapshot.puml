@@ -1,0 +1,39 @@
+@startuml
+title Naive snapshot: inconsistent cut
+
+participant Coordinator
+participant P0
+participant P1
+participant P2
+
+note over P0,P2
+Initial total S = 3000
+P0=1000, P1=1000, P2=1000
+end note
+
+== Transfer in transit ==
+P0 -> P0: withdraw 700\nP0 balance = 300
+P0 -[#red,dashed]> P1: Transfer(700)\nnot delivered yet
+
+== Naive snapshot ignores channels ==
+Coordinator -> P0: NaiveSnapshotRequest(naive-1)
+P0 --> Coordinator: NaiveSnapshotReply(300)
+
+Coordinator -> P1: NaiveSnapshotRequest(naive-1)
+P1 --> Coordinator: NaiveSnapshotReply(1000)
+
+Coordinator -> P2: NaiveSnapshotRequest(naive-1)
+P2 --> Coordinator: NaiveSnapshotReply(1000)
+
+note right of Coordinator
+Naive sum = 300 + 1000 + 1000 = 2300
+Expected S = 3000
+Missing 700 is the in-transit transfer.
+The cut is inconsistent because channel state is ignored.
+end note
+
+== Message arrives after snapshot replies ==
+P0 -[#red]> P1: Transfer(700)
+P1 -> P1: deposit 700\nP1 balance = 1700
+
+@enduml

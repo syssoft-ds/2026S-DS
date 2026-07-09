@@ -1,0 +1,4 @@
+Experiment,n tested,Runs,Failures,Success rate,Largest all-ok n,Rounds @ max ok n,Multicasts @ max ok n,Avg latency ms @ max ok n,Duration s @ max ok n,Note
+Sim4Da firework,2-16384 (14 sizes),140,6,95.7%,8192,17.0,8185.4,1941.28,33.069,n=16384 had 6/10 failed runs
+Token ring distributed,2,10,0,100.0%,2,4.7,1.5,12.21,0.353,""
+Token ring local,2-896 (10 sizes),100,0,100.0%,896,13.9,903.1,3925.1,82.437,""
