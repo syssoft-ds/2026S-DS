@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verteilte Systeme 2 Visualisierung</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f2f2f2;
+    color: #1a1a1a;
+    font-size: 14px;
+    line-height: 1.4;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 20px; }
+
+  /* ---- masthead ---- */
+  .masthead { margin-bottom: 20px; }
+  .masthead h1 { font-size: 22px; font-weight: bold; margin-bottom: 4px; }
+  .masthead .sub { color: #555; font-size: 14px; }
+  .masthead .sub b { font-weight: bold; color: #1a1a1a; }
+
+  /* ---- layout ---- */
+  .stage { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+  @media (max-width: 880px) { .stage { grid-template-columns: 1fr; } }
+
+  .screen {
+    position: relative;
+    border: 1px solid #999;
+    background: #fff;
+    aspect-ratio: 1 / 0.94;
+    overflow: hidden;
+  }
+  svg { display: block; width: 100%; height: 100%; }
+
+  .hud-top {
+    position: absolute; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 6px 8px; font-family: monospace; font-size: 12px;
+    color: #333; pointer-events: none;
+  }
+
+  .legend {
+    position: absolute; left: 8px; bottom: 6px;
+    font-size: 12px; color: #555; display: flex; gap: 12px; flex-wrap: wrap;
+    pointer-events: none;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sq { width: 10px; height: 10px; display: inline-block; }
+
+  .verdictlay {
+    position: absolute; inset: 0; display: none; place-content: center; text-align: center;
+    background: rgba(255,255,255,0.92); z-index: 5;
+  }
+  .verdictlay.show { display: grid; }
+  .verdictlay h2 { font-size: 22px; line-height: 1.3; font-weight: bold; }
+  .verdictlay h2.ok { color: #080; }
+  .verdictlay h2.bad { color: #b00; }
+  .verdictlay p { font-size: 13px; margin-top: 12px; line-height: 1.8; color: #333; }
+  .verdictlay p b { font-weight: bold; }
+  .verdictlay .close { margin-top: 14px; }
+  .verdictlay button { flex: none; padding: 6px 16px; }
+
+  /* ---- side panel ---- */
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+  .box { border: 1px solid #ccc; background: #fff; padding: 12px; }
+  .box h2 { font-size: 13px; font-weight: bold; margin-bottom: 10px; }
+
+  .scoreboard { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 8px; }
+  .score .k { font-size: 11px; color: #777; text-transform: uppercase; }
+  .score .v { font-size: 22px; line-height: 1; }
+  .score .v small { font-size: 13px; color: #777; }
+  .score .v.ok { color: #080; }
+  .score .v.bad { color: #b00; }
+
+  .ctrl { margin-bottom: 10px; }
+  .ctrl:last-of-type { margin-bottom: 0; }
+  .ctrl label { display: flex; justify-content: space-between; font-size: 13px; color: #555; margin-bottom: 4px; }
+  .ctrl label .val { color: #1a1a1a; }
+  input[type=range] { width: 100%; }
+  input[type=range]:disabled { opacity: 0.5; }
+
+  .btns { display: flex; gap: 6px; margin-top: 4px; }
+  button {
+    flex: 1; font-size: 13px; padding: 6px 4px; cursor: pointer;
+    background: #e6e6e6; border: 1px solid #999; color: #1a1a1a;
+  }
+  button:hover:not(:disabled) { background: #dadada; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .sumtable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sumtable td { padding: 3px 0; border-bottom: 1px solid #eee; }
+  .sumtable td:last-child { text-align: right; font-family: monospace; }
+  .sumtable tr.total td { font-weight: bold; border-bottom: none; }
+
+  /* ---- time diagram ---- */
+  .seqbox { margin-top: 16px; border: 1px solid #999; background: #fff; }
+  .seqbox .head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 8px 10px 0 10px;
+  }
+  .seqbox .head h2 { font-size: 13px; font-weight: bold; }
+  .seqbox .head .cap { font-size: 12px; color: #777; }
+  .seqbox svg { width: 100%; height: 240px; }
+
+  .log {
+    margin-top: 16px;
+    border: 1px solid #ccc; background: #fafafa; padding: 8px 10px;
+    height: 132px; overflow-y: auto; font-family: monospace; font-size: 12px;
+    line-height: 1.4; color: #444;
+  }
+  .log .t { color: #999; }
+  .log .white { color: #06c; }
+  .log .black { color: #85c; }
+  .log .ctrl { color: #b00; }
+  .log .chan { color: #a80; }
+  .log .ok { color: #080; }
+  .log .bad { color: #b00; }
+
+  footer { margin-top: 20px; color: #777; font-size: 13px; line-height: 1.5; text-align: center; }
+  footer b { color: #333; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <h1>Simulated&nbsp;Bankhaus</h1>
+    <div class="sub">a snapshot, some paint, and <b>n</b> processes in a complete network &mdash; FIFO off, latency on</div>
+  </div>
+
+  <div class="stage">
+    <div class="screen">
+      <svg id="c" viewBox="0 0 480 452"></svg>
+      <div class="hud-top">
+        <div class="l">ROUND <span id="hud-round">00</span></div>
+        <div class="r">S = <span id="hud-s">5000</span></div>
+      </div>
+      <div class="legend">
+        <span><i class="sq" style="background:#4dd0ff"></i>transfer white</span>
+        <span><i class="sq" style="background:#c77dff"></i>transfer black</span>
+        <span><i class="sq" style="background:#ff4d6d"></i>control</span>
+        <span><i class="sq" style="background:#ffd23f"></i>channel report</span>
+      </div>
+      <div class="verdictlay" id="verdictlay">
+        <div>
+          <h2 id="vl-h">SNAPSHOT<br>DONE</h2>
+          <p id="vl-stats"></p>
+          <div class="close"><button id="btn-close">OK</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="box">
+        <h2>SCORE</h2>
+        <div class="scoreboard">
+          <div class="score"><div class="k">snapshots</div><div class="v" id="s-snaps">0</div></div>
+          <div class="score"><div class="k">transfers</div><div class="v" id="s-transfers">0</div></div>
+          <div class="score"><div class="k">consistent</div><div class="v" id="s-cons">0<small>/0</small></div></div>
+          <div class="score"><div class="k">ctrl msgs</div><div class="v" id="s-ctrl">&mdash;</div></div>
+          <div class="score"><div class="k">captured</div><div class="v" id="s-cap">&mdash;</div></div>
+          <div class="score"><div class="k">verdict</div><div class="v" id="s-verdict">&mdash;</div></div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>SNAPSHOT</h2>
+        <table class="sumtable">
+          <tr><td>&Sigma; accounts (saved)</td><td id="t-acc">&mdash;</td></tr>
+          <tr><td>&Sigma; channels (reports)</td><td id="t-chan">&mdash;</td></tr>
+          <tr class="total"><td>captured sum</td><td id="t-tot">&mdash;</td></tr>
+          <tr class="total"><td>expected S</td><td id="t-s">&mdash;</td></tr>
+        </table>
+        <div class="btns" style="margin-top:10px">
+          <button id="btn-colored">Colored</button>
+          <button id="btn-naive">Naive</button>
+        </div>
+      </div>
+
+      <div class="box">
+        <h2>PARAMS</h2>
+        <div class="ctrl"><label>nodes <span class="val" id="v-n">5</span></label><input type="range" id="r-n" min="3" max="12" step="1" value="5"></div>
+        <div class="ctrl"><label>latency <span class="val" id="v-lat">1.0x</span></label><input type="range" id="r-lat" min="0.25" max="3" step="0.25" value="1"></div>
+        <div class="ctrl"><label>speed <span class="val" id="v-speed">1x</span></label><input type="range" id="r-speed" min="0.25" max="4" step="0.25" value="1"></div>
+        <div class="btns">
+          <button id="btn-pause">Pause</button>
+          <button id="btn-reset">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="seqbox">
+    <div class="head">
+      <h2>TIME DIAGRAM</h2>
+      <div class="cap">the cut as a line through the local snapshots &mdash; <span style="color:#080">colored: consistent</span>, <span style="color:#b00">naive: crossed backwards</span></div>
+    </div>
+    <svg id="seq" viewBox="0 0 1040 240" preserveAspectRatio="none"></svg>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <footer>
+    invariant: <b>&Sigma; accounts + &Sigma; in-flight transfers = S</b> &mdash;
+    the colored snapshot (round stamps + channel reports + deficit counting) always captures S;
+    the naive one ignores the channels and violates
+    <b>e&#8322; &isin; S &and; e&#8321; &lt;&#8342; e&#8322; &rArr; e&#8321; &isin; S</b>.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  /* --------------------------------------------------------------
+     Miniatur-Nachbildung der Java-Implementierung (BankNode /
+     CoordinatorNode): sofort abbuchen, zufällige Latenz, nicht-FIFO
+     Zustellung, Einfärbeverfahren mit Rundenstempeln, ChannelReports
+     und Defizitzählung; naiver Schnappschuss zum Vergleich.
+     Das Zeitdiagramm zeichnet jede Nachricht als Pfeil und den
+     Schnitt als Linie durch die lokalen Zustandssicherungen.
+     -------------------------------------------------------------- */
+  const svg = document.getElementById('c');
+  const seq = document.getElementById('seq');
+  const NS = 'http://www.w3.org/2000/svg';
+
+  const el = {
+    log: document.getElementById('log'),
+    snaps: document.getElementById('s-snaps'), transfers: document.getElementById('s-transfers'),
+    cons: document.getElementById('s-cons'), ctrl: document.getElementById('s-ctrl'),
+    cap: document.getElementById('s-cap'), verdict: document.getElementById('s-verdict'),
+    tAcc: document.getElementById('t-acc'), tChan: document.getElementById('t-chan'),
+    tTot: document.getElementById('t-tot'), tS: document.getElementById('t-s'),
+    hudRound: document.getElementById('hud-round'), hudS: document.getElementById('hud-s'),
+    lay: document.getElementById('verdictlay'), layH: document.getElementById('vl-h'),
+    layStats: document.getElementById('vl-stats'),
+    btnColored: document.getElementById('btn-colored'), btnNaive: document.getElementById('btn-naive'),
+    btnPause: document.getElementById('btn-pause'), btnReset: document.getElementById('btn-reset'),
+    btnClose: document.getElementById('btn-close'),
+  };
+  const sliders = { n: document.getElementById('r-n'), lat: document.getElementById('r-lat'), speed: document.getElementById('r-speed') };
+  const labels  = { n: document.getElementById('v-n'), lat: document.getElementById('v-lat'), speed: document.getElementById('v-speed') };
+
+  const COL = { white:'#4dd0ff', black:'#c77dff', ctrl:'#ff4d6d', chan:'#ffd23f',
+                idle:'#4d4663', net:'#241d38', coord:'#ffd23f', ok:'#080', bad:'#b00' };
+  const START = 1000, CX = 240, CY = 226, R = 165;
+  const SEQW = 1040, SEQH = 240, WINDOW = 1500;   // diagram shows the last ~1500 ticks
+
+  let P = { n: 5, lat: 1, speed: 1 };
+  let nodes = [], flights = [], hist = [], cuts = [];
+  let paused = false, tick = 0, lastTs = 0;
+  let round = 0, snap = null, naive = null, lastStarted = null, naiveSeq = 0;
+  let score = { snaps: 0, transfers: 0, consOk: 0, consAll: 0 };
+  let wave = -1;
+
+  const S = () => P.n * START;
+
+  function log(html, cls) {
+    const d = document.createElement('div'); if (cls) d.className = cls;
+    d.innerHTML = `<span class="t">t${String(tick|0).padStart(5,'0')}</span> ` + html;
+    el.log.prepend(d);
+    while (el.log.childNodes.length > 120) el.log.removeChild(el.log.lastChild);
+  }
+
+  function layout() {
+    for (let i = 0; i < nodes.length; i++) {
+      const a = -Math.PI/2 + (i/nodes.length)*Math.PI*2;
+      nodes[i].x = CX + Math.cos(a)*R; nodes[i].y = CY + Math.sin(a)*R;
+    }
+  }
+  function reset() {
+    readParams();
+    nodes = []; flights = []; hist = []; cuts = [];
+    tick = 0; round = 0; snap = null; naive = null; lastStarted = null; naiveSeq = 0;
+    wave = -1;
+    score = { snaps: 0, transfers: 0, consOk: 0, consAll: 0 };
+    for (let i = 0; i < P.n; i++)
+      nodes.push({ id:i, x:0, y:0, balance:START, round:0, saved:null, flash:0,
+                   sentBy:{}, recvBy:{}, cool: 10 + Math.random()*50 });
+    layout();
+    el.lay.classList.remove('show');
+    el.log.innerHTML = '';
+    log(`<span class="t">&gt;</span> reset: n=${P.n}, S=${S()}, balance ${START} each`);
+    updatePanel();
+  }
+
+  /* ---------------- base application ---------------- */
+  function sendTransfer(from) {
+    if (from.balance <= 1) return;
+    const others = nodes.filter(n => n.id !== from.id);
+    const to = others[(Math.random()*others.length)|0];
+    const b = 1 + ((Math.random()*Math.min(from.balance, 250))|0);
+    from.balance -= b;                          // debit immediately …
+    const stamp = from.round;                   // … stamp with sender's colour
+    from.sentBy[stamp] = (from.sentBy[stamp]||0) + 1;
+    score.transfers++;
+    flight(from, to, { kind:'transfer', b, stamp }, 'transfer');
+  }
+  function flight(from, to, msg, type) {       // random travel time => non-FIFO
+    const black = type === 'transfer' && snap && !snap.done && msg.stamp === snap.round;
+    const f = { from, to, msg, type, black, t:0, dur: (26 + Math.random()*66) * P.lat, t0: tick };
+    flights.push(f); hist.push(f);
+  }
+
+  /* ---------------- colored snapshot (variant a) ---------------- */
+  function localSnapshot(n, newRound) {
+    n.round = newRound; n.saved = n.balance; n.flash = 1;
+    cuts.push({ t: tick, node: n.id, sid: 'c' + newRound, naive: false });
+    const prev = newRound - 1;
+    const rep = { kind:'state', nodeId:n.id, bal:n.balance,
+                  sent:n.sentBy[prev]||0, recv:n.recvBy[prev]||0 };
+    if (n.id === 0) coordState(rep); else flight(n, nodes[0], rep, 'ctrl');
+    log(`node <b>${n.id}</b> turns black (round ${newRound}), saves <b>${n.saved}</b>`, 'ctrl');
+  }
+  function startColored() {
+    if (busy()) return;
+    round++; lastStarted = 'colored';
+    snap = { round, done:false, acc:{}, chan:0, chanN:0, ctrl:0,
+             expSent:0, expRecv:0, got:0, reports:0 };
+    wave = 1;
+    log(`<b>&gt; colored snapshot, round ${round}</b> (coordinator 0)`, 'ctrl');
+    localSnapshot(nodes[0], round);
+    for (let i = 1; i < P.n; i++) { flight(nodes[0], nodes[i], { kind:'state?', round }, 'ctrl'); snap.ctrl++; }
+    updatePanel();
+  }
+  function coordState(rep) {
+    if (rep.nodeId !== 0) snap.ctrl++;
+    snap.reports++; snap.acc[rep.nodeId] = rep.bal;
+    snap.expSent += rep.sent; snap.expRecv += rep.recv;
+    checkDone();
+  }
+  function coordChannel(rep) {
+    snap.ctrl++; snap.chanN++; snap.chan += rep.b; snap.got++;
+    log(`coordinator books <span class="chan">ChannelReport(${rep.b})</span> for ${rep.from}&rarr;${rep.to}`, 'chan');
+    checkDone();
+  }
+  function checkDone() {
+    if (snap.reports < P.n) return;
+    const deficit = snap.expSent - snap.expRecv;      // white msgs still in flight
+    if (snap.got < deficit) return;
+    snap.done = true;
+    snap.sumAcc = Object.values(snap.acc).reduce((a,b)=>a+b,0);
+    snap.total = snap.sumAcc + snap.chan;
+    finish(snap, true);
+  }
+
+  /* ---------------- naive snapshot ---------------- */
+  function startNaive() {
+    if (busy()) return;
+    lastStarted = 'naive'; naiveSeq++;
+    naive = { id: naiveSeq, done:false, acc:{ 0: nodes[0].balance }, ctrl:0, reports:1, chan:0, chanN:0 };
+    cuts.push({ t: tick, node: 0, sid: 'n' + naiveSeq, naive: true });
+    log(`<b>&gt; naive snapshot</b> (balances only, channels ignored)`, 'bad');
+    for (let i = 1; i < P.n; i++) { flight(nodes[0], nodes[i], { kind:'bal?' }, 'ctrl'); naive.ctrl++; }
+    updatePanel();
+  }
+  function naiveReply(m) {
+    naive.ctrl++; naive.reports++; naive.acc[m.nodeId] = m.bal;
+    if (naive.reports === P.n) {
+      naive.done = true;
+      naive.sumAcc = Object.values(naive.acc).reduce((a,b)=>a+b,0);
+      naive.total = naive.sumAcc;
+      finish(naive, false);
+    }
+  }
+
+  function finish(s, colored) {
+    score.snaps++; score.consAll++;
+    const ok = s.total === S();
+    if (ok) score.consOk++;
+    const kind = colored ? 'colored' : 'naive';
+    log(`<b>${kind} snapshot:</b> accounts ${s.sumAcc}` +
+        (colored ? ` + channels ${s.chan}` : '') +
+        ` = ${s.total} ${ok ? '= S' : '&ne; S=' + S()}` +
+        (ok ? ' <span class="ok">OK</span>' : ' <span class="bad">INCONSISTENT</span>'),
+        ok ? 'ok' : 'bad');
+    el.layH.className = ok ? 'ok' : 'bad';
+    el.layH.innerHTML = ok ? 'SNAPSHOT<br>CONSISTENT' : 'SNAPSHOT<br>INCONSISTENT';
+    el.layStats.innerHTML =
+      `MODE <b>${kind.toUpperCase()}</b><br>` +
+      `&Sigma; ACCOUNTS <b>${s.sumAcc}</b><br>` +
+      (colored ? `&Sigma; CHANNELS <b>${s.chan}</b> (${s.chanN} reports)<br>` : `CHANNELS <b>ignored</b><br>`) +
+      `CAPTURED <b>${s.total}</b> &mdash; EXPECTED <b>${S()}</b><br>` +
+      `CONTROL MSGS <b>${s.ctrl}</b>` +
+      (ok && !colored ? `<br><span style="color:#777">(lucky shot &mdash; no guarantee)</span>` : '');
+    el.lay.classList.add('show');
+    updatePanel();
+  }
+  const busy = () => (snap && !snap.done) || (naive && !naive.done);
+
+  /* ---------------- delivery (receiver logic from BankNode) ---------------- */
+  function deliver(f) {
+    const n = f.to, m = f.msg;
+    if (m.kind === 'transfer') {
+      n.recvBy[m.stamp] = (n.recvBy[m.stamp]||0) + 1;
+      if (m.stamp > n.round) {
+        log(`node ${n.id} gets <span class="black">black msg</span> before state? &rarr; recolours first`, 'black');
+        localSnapshot(n, m.stamp);
+      } else if (m.stamp < n.round && snap && !snap.done) {
+        log(`node ${n.id} (black) gets <span class="white">white Transfer(${m.b})</span> &rarr; forwards ChannelReport`, 'white');
+        const rep = { kind:'chan', from:f.from.id, to:n.id, b:m.b };
+        if (n.id === 0) coordChannel(rep); else flight(n, nodes[0], rep, 'chan');
+      }
+      n.balance += m.b;                                   // always credit normally
+      n.cool = Math.min(n.cool, 10 + Math.random()*30);   // message-driven: trigger next transfer
+    }
+    else if (m.kind === 'state?') { if (m.round > n.round) localSnapshot(n, m.round); }
+    else if (m.kind === 'state')  { coordState(m); }
+    else if (m.kind === 'chan')   { coordChannel(m); }
+    else if (m.kind === 'bal?')   { cuts.push({ t: tick, node: n.id, sid: 'n' + naive.id, naive: true });
+                                    flight(n, nodes[0], { kind:'bal', nodeId:n.id, bal:n.balance }, 'ctrl'); }
+    else if (m.kind === 'bal')    { naiveReply(m); }
+  }
+
+  /* ---------------- loop ---------------- */
+  function frame(ts) {
+    if (!lastTs) lastTs = ts;
+    let dt = ts - lastTs; lastTs = ts; if (dt > 60) dt = 60;
+    if (!paused) {
+      const step = dt * 0.06 * P.speed;
+      tick += step;
+      if (wave > 0) { wave += step*6; if (wave > 420) wave = -1; }
+      for (const n of nodes) {
+        n.cool -= step;
+        if (n.cool <= 0) { sendTransfer(n); n.cool = 18 + Math.random()*70; }
+        if (n.flash > 0) n.flash -= 0.02*step*3;
+      }
+      for (const f of flights) f.t += step;
+      const due = flights.filter(f => f.t >= f.dur);
+      due.sort(() => Math.random() - .5);                 // non-FIFO delivery order
+      flights = flights.filter(f => f.t < f.dur);
+      for (const f of due) { f.t1 = tick; deliver(f); }
+      const cutoff = tick - WINDOW;                       // prune diagram history
+      hist = hist.filter(f => (f.t1 == null ? f.t0 : f.t1) >= cutoff);
+      cuts = cuts.filter(c => c.t >= cutoff);
+    }
+    draw(); drawSeq(); updatePanel();
+    requestAnimationFrame(frame);
+  }
+
+  function E(tag, attrs) { const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  function draw() {
+    svg.innerHTML = '';
+    // complete network as dotted lines
+    for (let i = 0; i < nodes.length; i++)
+      for (let j = i+1; j < nodes.length; j++)
+        svg.appendChild(E('line', { x1:nodes[i].x, y1:nodes[i].y, x2:nodes[j].x, y2:nodes[j].y,
+          stroke:COL.net, 'stroke-width':1, 'stroke-dasharray':'1 4', opacity:.55 }));
+    // snapshot wavefront
+    if (wave > 0)
+      svg.appendChild(E('circle', { cx:nodes[0].x, cy:nodes[0].y, r:wave, fill:'none',
+        stroke:COL.ctrl, 'stroke-width':1.5, 'stroke-dasharray':'3 5',
+        opacity: Math.max(0, 0.8 - wave/420) }));
+    // messages
+    for (const f of flights) {
+      const p = Math.min(1, f.t / f.dur);
+      const x = f.from.x + (f.to.x - f.from.x)*p, y = f.from.y + (f.to.y - f.from.y)*p;
+      let c = COL.ctrl, s = 5;
+      if (f.type === 'transfer') { c = f.black ? COL.black : COL.white; s = 7; }
+      if (f.type === 'chan') { c = COL.chan; s = 6; }
+      svg.appendChild(E('rect', { x:x-s/2, y:y-s/2, width:s, height:s, fill:c, stroke:'#fff', 'stroke-width':1 }));
+      if (f.type === 'transfer') {
+        const t = E('text', { x, y:y-7, 'text-anchor':'middle', 'font-family':'monospace',
+          'font-size':9, fill:'#555' });
+        t.textContent = f.msg.b; svg.appendChild(t);
+      }
+    }
+    // nodes as pixel-ish squares
+    for (const n of nodes) {
+      const black = round > 0 && n.round === round && snap && !snap.done;
+      if (n.flash > 0)
+        svg.appendChild(E('rect', { x:n.x-16, y:n.y-16, width:32, height:32,
+          fill:COL.ctrl, opacity:Math.max(0,n.flash)*0.35 }));
+      svg.appendChild(E('rect', { x:n.x-11, y:n.y-11, width:22, height:22,
+        fill: black ? '#1a1a1a' : COL.idle }));
+      if (n.id === 0) {   // coordinator bracket
+        const b = 16, w = 1.5, c = COL.coord;
+        svg.appendChild(E('rect', { x:n.x-b, y:n.y-b, width:2*b, height:w, fill:c }));
+        svg.appendChild(E('rect', { x:n.x-b, y:n.y+b-w, width:2*b, height:w, fill:c }));
+        svg.appendChild(E('rect', { x:n.x-b, y:n.y-b, width:w, height:2*b, fill:c }));
+        svg.appendChild(E('rect', { x:n.x+b-w, y:n.y-b, width:w, height:2*b, fill:c }));
+      }
+      const id = E('text', { x:n.x, y:n.y+3.5, 'text-anchor':'middle', 'font-family':'monospace',
+        'font-size':10, 'font-weight':'bold', fill:'#fff' });
+      id.textContent = n.id; svg.appendChild(id);
+      const bal = E('text', { x:n.x, y:n.y+24, 'text-anchor':'middle', 'font-family':'monospace',
+        'font-size':10, fill:'#333' });
+      bal.textContent = n.balance; svg.appendChild(bal);
+      if (n.saved !== null && snap && !snap.done) {
+        const sv = E('text', { x:n.x, y:n.y+35, 'text-anchor':'middle', 'font-family':'monospace',
+          'font-size':9, fill:COL.ok });
+        sv.textContent = 'saved ' + n.saved; svg.appendChild(sv);
+      }
+    }
+  }
+
+  /* ---------------- time / sequence diagram ---------------- */
+  const laneY = i => 26 + i * ((SEQH - 52) / Math.max(P.n - 1, 1));
+  const tx = t => { const w = SEQW - 92;
+    return 64 + Math.max(0, w * (1 - (tick - t) / WINDOW)); };
+  const seqCol = f => f.type === 'transfer' ? (f.black ? COL.black : COL.white)
+                    : f.type === 'chan' ? '#d9a400' : COL.ctrl;
+
+  function drawSeq() {
+    seq.innerHTML = '';
+    for (let i = 0; i < P.n; i++) {                     // lanes + labels
+      const y = laneY(i);
+      seq.appendChild(E('line', { x1:56, y1:y, x2:SEQW-12, y2:y,
+        stroke:'#ddd', 'stroke-width':1 }));
+      const lb = E('text', { x:10, y:y+4, 'font-family':'monospace', 'font-size':11,
+        'font-weight': i === 0 ? 'bold' : 'normal', fill: i === 0 ? '#a80' : '#777' });
+      lb.textContent = 'P' + i + (i === 0 ? '*' : ''); seq.appendChild(lb);
+    }
+    for (const f of hist) {                             // message arrows
+      const x0 = tx(f.t0), y0 = laneY(f.from.id);
+      const done = f.t1 != null;
+      const x1 = done ? tx(f.t1) : tx(tick);
+      const y1 = done ? laneY(f.to.id)
+                      : y0 + (laneY(f.to.id) - y0) * Math.min(1, f.t / f.dur);
+      const c = seqCol(f);
+      seq.appendChild(E('line', { x1:x0, y1:y0, x2:x1, y2:y1, stroke:c,
+        'stroke-width': f.type === 'transfer' ? 1.6 : 1, opacity: done ? .8 : .95 }));
+      seq.appendChild(E('rect', { x:x1-2.5, y:y1-2.5, width:5, height:5, fill:c }));
+    }
+    const bySid = {};                                   // cut polylines
+    for (const c of cuts) (bySid[c.sid] ||= []).push(c);
+    for (const sid in bySid) {
+      const pts = bySid[sid].slice().sort((a,b) => laneY(a.node) - laneY(b.node));
+      const naiveCut = pts[0].naive;
+      const col = naiveCut ? COL.bad : COL.ok;
+      if (pts.length > 1)
+        seq.appendChild(E('polyline', {
+          points: pts.map(c => tx(c.t) + ',' + laneY(c.node)).join(' '),
+          fill:'none', stroke:col, 'stroke-width':2,
+          'stroke-dasharray': naiveCut ? '6 4' : 'none' }));
+      for (const c of pts)
+        seq.appendChild(E('circle', { cx:tx(c.t), cy:laneY(c.node), r:4, fill:col }));
+    }
+    const ax = E('text', { x:SEQW-14, y:SEQH-8, 'text-anchor':'end',
+      'font-family':'monospace', 'font-size':10, fill:'#999' });
+    ax.textContent = '\u2192 time (sliding window)'; seq.appendChild(ax);
+  }
+
+  function updatePanel() {
+    el.snaps.textContent = score.snaps;
+    el.transfers.textContent = score.transfers;
+    el.cons.innerHTML = score.consOk + '<small>/' + score.consAll + '</small>';
+    el.hudRound.textContent = String(round).padStart(2,'0');
+    el.hudS.textContent = S();
+    el.tS.textContent = S();
+    const show = (snap && !snap.done) ? snap : (naive && !naive.done) ? naive
+               : (lastStarted === 'naive' ? naive : snap) || naive || snap;
+    if (!show) {
+      el.ctrl.textContent = '\u2014'; el.cap.textContent = '\u2014'; el.verdict.textContent = '\u2014';
+      el.tAcc.textContent = '\u2014'; el.tChan.textContent = '\u2014'; el.tTot.textContent = '\u2014';
+      return;
+    }
+    const colored = show === snap;
+    el.ctrl.textContent = show.ctrl;
+    el.tAcc.textContent = show.done ? show.sumAcc : Object.values(show.acc).reduce((a,b)=>a+b,0) + ' \u2026';
+    el.tChan.textContent = colored ? show.chan : 'ignored';
+    el.tTot.textContent = show.done ? show.total : '\u2026';
+    el.cap.textContent = show.done ? show.total : '\u2026';
+    el.verdict.className = 'v ' + (show.done ? (show.total === S() ? 'ok' : 'bad') : '');
+    el.verdict.textContent = show.done ? (show.total === S() ? 'OK' : 'BAD') : '\u2026';
+    el.btnColored.disabled = el.btnNaive.disabled = busy();
+  }
+
+  function readParams() { P.n = +sliders.n.value; P.lat = +sliders.lat.value; P.speed = +sliders.speed.value; }
+  function syncLabels() {
+    labels.n.textContent = sliders.n.value;
+    labels.lat.textContent = (+sliders.lat.value).toFixed(2).replace(/0+$/,'').replace(/\.$/,'.0') + 'x';
+    labels.speed.textContent = (+sliders.speed.value).toString() + 'x';
+  }
+  sliders.n.addEventListener('input', () => { syncLabels(); reset(); });
+  sliders.lat.addEventListener('input', () => { syncLabels(); readParams(); });
+  sliders.speed.addEventListener('input', () => { syncLabels(); readParams(); });
+
+  el.btnColored.addEventListener('click', startColored);
+  el.btnNaive.addEventListener('click', startNaive);
+  el.btnPause.addEventListener('click', () => {
+    paused = !paused; el.btnPause.textContent = paused ? 'Resume' : 'Pause'; });
+  el.btnReset.addEventListener('click', reset);
+  el.btnClose.addEventListener('click', () => el.lay.classList.remove('show'));
+
+  syncLabels(); reset();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
