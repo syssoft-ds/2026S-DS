@@ -1,0 +1,13 @@
+Traceback (most recent call last):
+  File "C:\Users\Tim\Documents\Uni\Uni Trier\Master\s26\verteilte systeme\u1\2026S-DS\Übungsblatt 1\Aufgabe 1\firework.py", line 137, in <module>
+    data, sender = tok.recvfrom(4096)
+                   ~~~~~~~~~~~~^^^^^^
+TimeoutError: timed out
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Tim\Documents\Uni\Uni Trier\Master\s26\verteilte systeme\u1\2026S-DS\Übungsblatt 1\Aufgabe 1\firework.py", line 141, in <module>
+    if time.monotonic() - idle > A.idle: break       # Notausstieg
+       ~~~~~~~~~~~~~~^^
+KeyboardInterrupt

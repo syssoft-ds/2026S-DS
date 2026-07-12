@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "C:\Users\Tim\Documents\Uni\Uni Trier\Master\s26\verteilte systeme\u1\2026S-DS\Übungsblatt 1\Aufgabe 1\firework.py", line 55, in <module>
+    tok.bind((LO, BASE + A.id))
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^
+OSError: [WinError 10048] Normalerweise darf jede Socketadresse (Protokoll, Netzwerkadresse oder Anschluss) nur jeweils einmal verwendet werden
